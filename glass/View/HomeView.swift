@@ -1,24 +1,12 @@
 import SwiftUI
-
 struct HomeView: View {
-    @StateObject private var viewModel = LoanOfferViewModel()
+    @ObservedObject var viewModel: LoanOfferViewModel
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         NavigationStack {
-            if viewModel.isLoading {
-                ProgressView("Loading...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.secondary)
-                    .preferredColorScheme(colorScheme)
-            } else if let errorMessage = viewModel.errorMessage {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.secondary)
-                    .preferredColorScheme(colorScheme)
-            } else {
-                List(viewModel.offers) { offer in
+            List {
+                ForEach(viewModel.offers) { offer in
                     LoanOfferCard(
                         profileImageURL: URL(string: offer.user.userProfile ?? ""),
                         interestRate: offer.interestRate,
@@ -27,16 +15,37 @@ struct HomeView: View {
                         username: offer.user.username
                     )
                     .listRowSeparator(.hidden)
+                    .onAppear {
+                        Task {
+                            await viewModel.loadNextPageIfNeeded(currentItem: offer)
+                        }
+                    }
                 }
-                .listStyle(.plain)
-                .background(colorScheme == .dark ? Color.black : Color.white)
-                .navigationTitle("Loan Offers")
-                .preferredColorScheme(colorScheme)
+
+                if viewModel.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
             }
-        }
-        .onAppear {
-            Task {
-                await viewModel.loadOffers()
+            .listStyle(.plain)
+            .background(colorScheme == .dark ? Color.black : Color.white)
+            .navigationTitle("Loan Offers")
+            .preferredColorScheme(colorScheme)
+            .refreshable {
+                Task {
+                    // Pull-to-refresh: reload first page only
+                    viewModel.currentPage = 1
+                    await viewModel.loadOffers()
+                }
+            }
+            .onAppear {
+                Task {
+                    // Load first page if nothing is loaded yet
+                    if viewModel.offers.isEmpty {
+                        await viewModel.loadOffers()
+                    }
+                }
             }
         }
     }

@@ -1,21 +1,19 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var loanOfferVM = LoanOfferViewModel()
+
     var body: some View {
         TabView {
-            // Reference the separate views directly
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house")
-                }
-            
+            HomeView(viewModel: loanOfferVM)
+                .tabItem { Label("Home", systemImage: "house") }
+
             SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
+                .tabItem { Label("Settings", systemImage: "gear") }
         }
     }
 }
+
 
 #Preview {
     ContentView()
